@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Coverage Dashboard</title>
+    <style>
+        :root {
+            --bg: #f7f8fa;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text: #111827;
+            --muted: #6b7280;
+            --accent: #4f46e5;
+            --low: #dc2626;
+            --low-bg: #fee2e2;
+            --mid: #d97706;
+            --mid-bg: #fef3c7;
+            --high: #16a34a;
+            --high-bg: #dcfce7;
+            --neutral-bg: #f3f4f6;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        body.no-scroll { overflow: hidden; }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem 4rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 1.5rem;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.1rem 1.3rem;
+        }
+
+        .stat .label {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .stat .value {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            padding: 0.9rem 1.2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody td {
+            padding: 0.8rem 1.2rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            vertical-align: middle;
+        }
+
+        tbody tr:last-child td { border-bottom: none; }
+
+        tbody tr:hover { background: var(--neutral-bg); }
+
+        .file-link {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            color: var(--accent);
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .file-link:hover { text-decoration: underline; }
+
+        .coverage-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 220px; }
+
+        .bar {
+            flex: 1;
+            height: 6px;
+            background: var(--neutral-bg);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .bar-fill { height: 100%; border-radius: 999px; }
+
+        .pct { font-weight: 600; font-size: 0.85rem; width: 3.2rem; text-align: right; }
+
+        .low { color: var(--low); }
+        .mid { color: var(--mid); }
+        .high { color: var(--high); }
+        .bar-fill.low { background: var(--low); }
+        .bar-fill.mid { background: var(--mid); }
+        .bar-fill.high { background: var(--high); }
+
+        .empty { padding: 3rem; text-align: center; color: var(--muted); }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 { margin: 0; }
+
+        .btn-clear {
+            background: var(--low);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .btn-clear:hover { background: #b91c1c; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.55);
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            margin: auto;
+            width: 100%;
+            max-width: 960px;
+            height: 100%;
+            background: var(--surface);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.3rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-header h2 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0;
+            word-break: break-all;
+            font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            line-height: 1;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        .modal-close:hover { background: var(--neutral-bg); color: var(--text); }
+
+        .modal-body { overflow-y: auto; flex: 1; }
+
+        .code-table { width: 100%; border-collapse: collapse; font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: 0.82rem; }
+
+        .code-table td { padding: 0.15rem 0.8rem; white-space: pre; }
+
+        .code-table .ln { color: var(--muted); text-align: right; user-select: none; width: 3.5rem; }
+
+        .code-table .hits { color: var(--muted); text-align: right; width: 4rem; }
+
+        .code-table tr.l-covered { background: var(--high-bg); }
+        .code-table tr.l-uncovered { background: var(--low-bg); }
+
+        .code-empty { padding: 2rem; color: var(--muted); text-align: center; font-family: inherit; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="header">
+        <h1>📊 Code Coverage Dashboard</h1>
+        <form method="post" action="{{ path('dead_code_clear') }}" id="clear-form">
+            <button type="submit" class="btn-clear">Clear coverage data</button>
+        </form>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="label">Global coverage</div>
+            <div class="value">{{ coveragePercentage }}%</div>
+        </div>
+        <div class="stat">
+            <div class="label">Lines covered</div>
+            <div class="value">{{ coveredLines }} / {{ totalLines }}</div>
+        </div>
+        <div class="stat">
+            <div class="label">Lines missed</div>
+            <div class="value">{{ totalLines - coveredLines }}</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        {% if files is empty %}
+            <div class="empty">No coverage data yet.</div>
+        {% else %}
+            <table>
+                <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Coverage</th>
+                    <th>Lines</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for file in files %}
+                    {% set level = file.coveragePercentage < 50 ? 'low' : (file.coveragePercentage < 80 ? 'mid' : 'high') %}
+                    <tr>
+                        <td>
+                            <button type="button" class="file-link" data-index="{{ loop.index0 }}" data-path="{{ file.path }}">
+                                {{ file.path }}
+                            </button>
+                        </td>
+                        <td>
+                            <div class="coverage-cell">
+                                <div class="bar"><div class="bar-fill {{ level }}" style="width: {{ file.coveragePercentage }}%"></div></div>
+                                <span class="pct {{ level }}">{{ file.coveragePercentage }}%</span>
+                            </div>
+                        </td>
+                        <td>{{ file.coveredLines }} / {{ file.totalLines }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+
+<div class="code-store" hidden>
+    {% for file in files %}
+        <div class="code-panel" id="code-{{ loop.index0 }}">
+            {% if file.code is empty %}
+                <div class="code-empty">Source file not available on this server.</div>
+            {% else %}
+                <table class="code-table">
+                    <tbody>
+                    {% for lineNumber, content in file.code %}
+                        {% set hit = file.lines[lineNumber] ?? null %}
+                        <tr class="{{ hit is null ? 'l-neutral' : (hit > 0 ? 'l-covered' : 'l-uncovered') }}">
+                            <td class="ln">{{ lineNumber }}</td>
+                            <td class="code">{{ content }}</td>
+                            <td class="hits">{{ hit is not null ? hit ~ '×' : '' }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modal-title"></h2>
+            <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var overlay = document.getElementById('modal-overlay');
+    var title = document.getElementById('modal-title');
+    var body = document.getElementById('modal-body');
+
+    function openModal(index, path) {
+        var panel = document.getElementById('code-' + index);
+        if (!panel) {
+            return;
+        }
+        title.textContent = path;
+        body.innerHTML = panel.innerHTML;
+        overlay.classList.add('open');
+        document.body.classList.add('no-scroll');
+    }
+
+    function closeModal() {
+        overlay.classList.remove('open');
+        document.body.classList.remove('no-scroll');
+        body.innerHTML = '';
+    }
+
+    document.querySelectorAll('.file-link').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            openModal(btn.dataset.index, btn.dataset.path);
+        });
+    });
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+
+    overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) {
+            closeModal();
+        }
+    });
+
+    document.getElementById('clear-form').addEventListener('submit', function (e) {
+        if (!window.confirm('Clear all collected coverage data? This cannot be undone.')) {
+            e.preventDefault();
+        }
+    });
+})();
+</script>
+</body>
+</html>
