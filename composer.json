@@ -24,9 +24,9 @@
     "ext-pcov": "*",
     "predis/predis": "^2.0",
     "psr/log": "^3.0",
-    "symfony/console": "^6.4|^7.0|^8.0",
-    "symfony/framework-bundle": "^6.4|^7.0|^8.0",
-    "symfony/routing": "^6.4|^7.0|^8.0"
+    "symfony/console": "^7.0|^8.0",
+    "symfony/framework-bundle": "^7.0|^8.0",
+    "symfony/routing": "^7.0|^8.0"
   },
   "require-dev": {
     "carthage-software/mago": "^1.49.0",
