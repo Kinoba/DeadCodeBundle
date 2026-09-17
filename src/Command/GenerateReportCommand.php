@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 namespace Kinoba\DeadCodeBundle\Command;
-use Symfony\Component\Console\Attribute\AsCommand;
+
 use Kinoba\DeadCodeBundle\Service\CoverageReporter;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -32,15 +33,17 @@ class GenerateReportCommand extends Command
 
         $io->section('Fichiers les moins couverts');
         foreach ($data['files'] as $file) {
-            if ($file['coveragePercentage'] < 100) {
-                $io->writeln(sprintf(
-                    '<comment>%s: %s%% (%d/%d lignes)</comment>',
-                    $file['path'],
-                    $file['coveragePercentage'],
-                    $file['coveredLines'],
-                    $file['totalLines']
-                ));
+            if ($file['coveragePercentage'] >= 100) {
+                continue;
             }
+
+            $io->writeln(sprintf(
+                '<comment>%s: %s%% (%d/%d lignes)</comment>',
+                $file['path'],
+                $file['coveragePercentage'],
+                $file['coveredLines'],
+                $file['totalLines'],
+            ));
         }
 
         return Command::SUCCESS;

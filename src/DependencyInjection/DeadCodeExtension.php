@@ -4,16 +4,26 @@ declare(strict_types=1);
 
 namespace Kinoba\DeadCodeBundle\DependencyInjection;
 
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 
 class DeadCodeExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
+
+        /**
+         * @var array{
+         *     enabled: bool,
+         *     redis_dsn: string,
+         *     sampling_rate: int,
+         *     cache_ttl: int|string,
+         *     ignored_paths: list<string>,
+         * } $config
+         */
         $config = $this->processConfiguration($configuration, $configs);
 
         $loader = new PhpFileLoader($container, new FileLocator(__DIR__ . '/../../config'));

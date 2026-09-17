@@ -8,7 +8,7 @@ use Kinoba\DeadCodeBundle\Service\CoverageReporter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 
-class DashboardController extends AbstractController
+final class DashboardController extends AbstractController
 {
     public function dashboard(CoverageReporter $reporter): Response
     {

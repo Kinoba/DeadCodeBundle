@@ -6,6 +6,7 @@ namespace Kinoba\DeadCodeBundle\Tests\Service;
 
 use Kinoba\DeadCodeBundle\Service\RedisStorage;
 use Kinoba\DeadCodeBundle\Tests\Stub\FakePredisClient;
+use Kinoba\DeadCodeBundle\Tests\Stub\RecordingLogger;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Predis\Client;
@@ -25,28 +26,31 @@ final class RedisStorageTest extends TestCase
             '/app/src/Bar.php' => [4 => 0],
         ]);
 
-        self::assertSame([
-            ['hset', 'coverage:files:/app/src/Foo.php', 'req_1', '{"10":1}'],
-            ['expire', 'coverage:files:/app/src/Foo.php', 3600],
-            ['hset', 'coverage:files:/app/src/Bar.php', 'req_1', '{"4":0}'],
-            ['expire', 'coverage:files:/app/src/Bar.php', 3600],
-            ['sadd', 'coverage:requests', 'req_1'],
-            ['expire', 'coverage:requests', 3600],
-        ], $client->calls);
+        static::assertSame(
+            [
+                ['hset', 'coverage:files:/app/src/Foo.php', 'req_1', '{"10":1}'],
+                ['expire', 'coverage:files:/app/src/Foo.php', 3600],
+                ['hset', 'coverage:files:/app/src/Bar.php', 'req_1', '{"4":0}'],
+                ['expire', 'coverage:files:/app/src/Bar.php', 3600],
+                ['sadd', 'coverage:requests', 'req_1'],
+                ['expire', 'coverage:requests', 3600],
+            ],
+            $client->calls,
+        );
     }
 
     public function testSaveCoverageSwallowsConnectionException(): void
     {
         $client = new FakePredisClient();
         $client->exception = $this->createConnectionException();
-        $storage = $this->createStorage($client, 60);
+        $logger = new RecordingLogger();
+        $storage = $this->createStorage($client, 60, $logger);
 
-        $logFile = $this->redirectErrorLog();
         $storage->saveCoverage('req_1', ['/app/src/Foo.php' => [10 => 1]]);
-        $this->restoreErrorLog();
 
-        self::assertSame([], $client->calls);
-        self::assertStringContainsString('Redis error: Connection refused', (string) file_get_contents($logFile));
+        static::assertSame([], $client->calls);
+        static::assertCount(1, $logger->records);
+        static::assertStringContainsString('Connection refused', (string) $logger->records[0]['context']['message']);
     }
 
     public function testGetAllCoverageMergesLineHitsAcrossRequests(): void
@@ -62,7 +66,7 @@ final class RedisStorageTest extends TestCase
 
         $coverage = $this->createStorage($client, 60)->getAllCoverage();
 
-        self::assertSame(['/app/src/Foo.php' => [10 => 3, 11 => 0]], $coverage);
+        static::assertSame(['/app/src/Foo.php' => [10 => 3, 11 => 0]], $coverage);
     }
 
     public function testGetAllCoverageClampsNegativeNotExecutedSentinels(): void
@@ -79,7 +83,7 @@ final class RedisStorageTest extends TestCase
 
         $coverage = $this->createStorage($client, 60)->getAllCoverage();
 
-        self::assertSame(['/app/src/Foo.php' => [10 => 0, 11 => 2]], $coverage);
+        static::assertSame(['/app/src/Foo.php' => [10 => 0, 11 => 2]], $coverage);
     }
 
     public function testGetAllCoverageReturnsEmptyArrayWhenRedisIsUnavailable(): void
@@ -87,7 +91,7 @@ final class RedisStorageTest extends TestCase
         $client = new FakePredisClient();
         $client->exception = $this->createConnectionException();
 
-        self::assertSame([], $this->createStorage($client, 60)->getAllCoverage());
+        static::assertSame([], $this->createStorage($client, 60)->getAllCoverage());
     }
 
     public function testClearDeletesEveryCoverageKey(): void
@@ -97,10 +101,13 @@ final class RedisStorageTest extends TestCase
 
         $this->createStorage($client, 60)->clear();
 
-        self::assertSame([
-            ['keys', 'coverage:*'],
-            ['del', ['coverage:files:/app/src/Foo.php', 'coverage:requests']],
-        ], $client->calls);
+        static::assertSame(
+            [
+                ['keys', 'coverage:*'],
+                ['del', ['coverage:files:/app/src/Foo.php', 'coverage:requests']],
+            ],
+            $client->calls,
+        );
     }
 
     public function testClearSwallowsConnectionException(): void
@@ -110,10 +117,10 @@ final class RedisStorageTest extends TestCase
 
         $this->createStorage($client, 60)->clear();
 
-        self::assertSame([], $client->calls);
+        static::assertSame([], $client->calls);
     }
 
-    private function createStorage(Client $client, int $ttl): RedisStorage
+    private function createStorage(Client $client, int $ttl, ?RecordingLogger $logger = null): RedisStorage
     {
         $storage = (new \ReflectionClass(RedisStorage::class))->newInstanceWithoutConstructor();
 
@@ -123,26 +130,14 @@ final class RedisStorageTest extends TestCase
         $ttlProperty = new \ReflectionProperty($storage, 'ttl');
         $ttlProperty->setValue($storage, $ttl);
 
+        $loggerProperty = new \ReflectionProperty($storage, 'logger');
+        $loggerProperty->setValue($storage, $logger ?? new RecordingLogger());
+
         return $storage;
     }
 
     private function createConnectionException(): ConnectionException
     {
         return new ConnectionException($this->createStub(NodeConnectionInterface::class), 'Connection refused');
-    }
-
-    private string $previousErrorLog;
-
-    private function redirectErrorLog(): string
-    {
-        $logFile = tempnam(sys_get_temp_dir(), 'redis-storage-test-');
-        $this->previousErrorLog = (string) ini_set('error_log', $logFile);
-
-        return $logFile;
-    }
-
-    private function restoreErrorLog(): void
-    {
-        ini_set('error_log', $this->previousErrorLog);
     }
 }

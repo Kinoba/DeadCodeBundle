@@ -27,7 +27,7 @@ class CoverageListener
             return;
         }
 
-        $this->requestId = uniqid('req_', true);
+        $this->requestId = uniqid('req_', more_entropy: true);
         $this->collector->start();
     }
 

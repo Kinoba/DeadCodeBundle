@@ -16,12 +16,15 @@ final class CoverageReporterTest extends TestCase
     {
         $reporter = new CoverageReporter($this->createStorage([]));
 
-        self::assertSame([
-            'files' => [],
-            'totalLines' => 0,
-            'coveredLines' => 0,
-            'coveragePercentage' => 0,
-        ], $reporter->getDashboardData());
+        static::assertSame(
+            [
+                'files' => [],
+                'totalLines' => 0,
+                'coveredLines' => 0,
+                'coveragePercentage' => 0,
+            ],
+            $reporter->getDashboardData(),
+        );
     }
 
     public function testGetDashboardDataAggregatesLines(): void
@@ -33,10 +36,10 @@ final class CoverageReporterTest extends TestCase
 
         $data = $reporter->getDashboardData();
 
-        self::assertSame(6, $data['totalLines']);
-        self::assertSame(4, $data['coveredLines']);
-        self::assertSame(66.67, $data['coveragePercentage']);
-        self::assertCount(2, $data['files']);
+        static::assertSame(6, $data['totalLines']);
+        static::assertSame(4, $data['coveredLines']);
+        static::assertSame(66.67, $data['coveragePercentage']);
+        static::assertCount(2, $data['files']);
     }
 
     public function testFilesAreSortedByAscendingCoverage(): void
@@ -49,11 +52,11 @@ final class CoverageReporterTest extends TestCase
 
         $data = $reporter->getDashboardData();
 
-        self::assertSame(
+        static::assertSame(
             ['src/Dead.php', 'src/Partial.php', 'src/Covered.php'],
-            array_column($data['files'], 'path')
+            array_column($data['files'], 'path'),
         );
-        self::assertSame([0.0, 50.0, 100.0], array_column($data['files'], 'coveragePercentage'));
+        static::assertSame([0.0, 50.0, 100.0], array_column($data['files'], 'coveragePercentage'));
     }
 
     public function testFileWithoutLinesHasZeroPercentage(): void
@@ -62,14 +65,17 @@ final class CoverageReporterTest extends TestCase
 
         $data = $reporter->getDashboardData();
 
-        self::assertSame([
-            'path' => 'src/Empty.php',
-            'totalLines' => 0,
-            'coveredLines' => 0,
-            'coveragePercentage' => 0,
-            'lines' => [],
-            'code' => [],
-        ], $data['files'][0]);
+        static::assertSame(
+            [
+                'path' => 'src/Empty.php',
+                'totalLines' => 0,
+                'coveredLines' => 0,
+                'coveragePercentage' => 0,
+                'lines' => [],
+                'code' => [],
+            ],
+            $data['files'][0],
+        );
     }
 
     public function testClearDelegatesToStorage(): void

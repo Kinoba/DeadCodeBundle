@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: "Symfony ${{ matrix.symfony-version }} (PHP ${{ matrix.php-version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - symfony-version: "6.4.*"
+            php-version: "8.1"
+          - symfony-version: "7.*"
+            php-version: "8.2"
+          - symfony-version: "8.*"
+            php-version: "8.3"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pcov, redis
+          coverage: none
+          tools: composer:v2
+
+      - name: Require Symfony ${{ matrix.symfony-version }}
+        run: |
+          composer require --no-update --no-interaction \
+            "symfony/console:${{ matrix.symfony-version }}" \
+            "symfony/framework-bundle:${{ matrix.symfony-version }}" \
+            "symfony/routing:${{ matrix.symfony-version }}"
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ matrix.symfony-version }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ matrix.symfony-version }}-
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit
+
+      - name: Check formatting (mago format)
+        run: vendor/bin/mago format --check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lint (mago lint)
+        run: vendor/bin/mago lint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Static analysis (mago analyze)
+        run: vendor/bin/mago analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

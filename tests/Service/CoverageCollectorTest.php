@@ -16,21 +16,21 @@ final class CoverageCollectorTest extends TestCase
     {
         $collector = new CoverageCollector(false, 100, []);
 
-        self::assertFalse($collector->shouldCollect());
+        static::assertFalse($collector->shouldCollect());
     }
 
     public function testShouldAlwaysCollectWithFullSamplingRate(): void
     {
         $collector = new CoverageCollector(true, 100, []);
 
-        self::assertTrue($collector->shouldCollect());
+        static::assertTrue($collector->shouldCollect());
     }
 
     public function testShouldNeverCollectWithZeroSamplingRate(): void
     {
         $collector = new CoverageCollector(true, 0, []);
 
-        self::assertFalse($collector->shouldCollect());
+        static::assertFalse($collector->shouldCollect());
     }
 
     public function testStartDoesNothingWhenCollectionIsDisabled(): void
@@ -38,14 +38,14 @@ final class CoverageCollectorTest extends TestCase
         $collector = new CoverageCollector(false, 100, []);
         $collector->start();
 
-        self::assertFalse(self::isStarted($collector));
+        static::assertFalse(self::isStarted($collector));
     }
 
     public function testStopReturnsNullWhenNothingWasStarted(): void
     {
         $collector = new CoverageCollector(true, 100, []);
 
-        self::assertNull($collector->stop());
+        static::assertNull($collector->stop());
     }
 
     public function testStopReturnsEmptyArrayWhenNoFileIsWaitingForCollection(): void
@@ -53,13 +53,13 @@ final class CoverageCollectorTest extends TestCase
         $collector = new CoverageCollector(true, 100, []);
         $collector->start();
 
-        self::assertSame([], $collector->stop());
+        static::assertSame([], $collector->stop());
     }
 
     public function testStopClampsNotExecutedSentinelsToZero(): void
     {
         if (\extension_loaded('pcov')) {
-            self::markTestSkipped('Relies on the pcov stub to feed deterministic coverage data.');
+            static::markTestSkipped('Relies on the pcov stub to feed deterministic coverage data.');
         }
 
         $GLOBALS['__pcov_stub_coverage'] = [
@@ -71,7 +71,7 @@ final class CoverageCollectorTest extends TestCase
             $collector = new CoverageCollector(true, 100, ['/vendor/']);
             $collector->start();
 
-            self::assertSame(['src/Lead.php' => [10 => 3, 11 => 0]], $collector->stop());
+            static::assertSame(['src/Lead.php' => [10 => 3, 11 => 0]], $collector->stop());
         } finally {
             unset($GLOBALS['__pcov_stub_coverage']);
         }
@@ -84,7 +84,7 @@ final class CoverageCollectorTest extends TestCase
 
         $method = new \ReflectionMethod($collector, 'isIgnored');
 
-        self::assertSame($expected, $method->invoke($collector, $file));
+        static::assertSame($expected, $method->invoke($collector, $file));
     }
 
     /**
@@ -104,6 +104,6 @@ final class CoverageCollectorTest extends TestCase
     {
         $property = new \ReflectionProperty($collector, 'started');
 
-        return $property->getValue($collector);
+        return (bool) $property->getValue($collector);
     }
 }

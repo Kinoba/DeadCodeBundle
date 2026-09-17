@@ -23,12 +23,12 @@ final class GenerateReportCommandTest extends TestCase
             'coveragePercentage' => 75.0,
         ]);
 
-        self::assertSame(Command::SUCCESS, $tester->execute([]));
+        static::assertSame(Command::SUCCESS, $tester->execute([]));
 
         $display = $tester->getDisplay();
-        self::assertStringContainsString('Rapport de Coverage', $display);
-        self::assertStringContainsString('Coverage global: 75%', $display);
-        self::assertStringContainsString('Lignes couvertes: 90/120', $display);
+        static::assertStringContainsString('Rapport de Coverage', $display);
+        static::assertStringContainsString('Coverage global: 75%', $display);
+        static::assertStringContainsString('Lignes couvertes: 90/120', $display);
     }
 
     public function testItOnlyListsPartiallyCoveredFiles(): void
@@ -56,8 +56,8 @@ final class GenerateReportCommandTest extends TestCase
         $tester->execute([]);
 
         $display = $tester->getDisplay();
-        self::assertStringContainsString('/src/Dead.php: 25% (1/4 lignes)', $display);
-        self::assertStringNotContainsString('/src/Covered.php', $display);
+        static::assertStringContainsString('/src/Dead.php: 25% (1/4 lignes)', $display);
+        static::assertStringNotContainsString('/src/Covered.php', $display);
     }
 
     public function testItSucceedsWithoutAnyCoverageData(): void
@@ -69,16 +69,14 @@ final class GenerateReportCommandTest extends TestCase
             'coveragePercentage' => 0,
         ]);
 
-        self::assertSame(Command::SUCCESS, $tester->execute([]));
-        self::assertStringContainsString('Coverage global: 0%', $tester->getDisplay());
+        static::assertSame(Command::SUCCESS, $tester->execute([]));
+        static::assertStringContainsString('Coverage global: 0%', $tester->getDisplay());
     }
 
     private function createTester(array $dashboardData): CommandTester
     {
         $reporter = $this->createMock(CoverageReporter::class);
-        $reporter->expects(self::once())
-            ->method('getDashboardData')
-            ->willReturn($dashboardData);
+        $reporter->expects(self::once())->method('getDashboardData')->willReturn($dashboardData);
 
         return new CommandTester(new GenerateReportCommand($reporter));
     }

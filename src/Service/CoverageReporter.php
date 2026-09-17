@@ -13,6 +13,21 @@ class CoverageReporter
         $this->storage = $storage;
     }
 
+    /**
+     * @return array{
+     *     files: list<array{
+     *         path: string,
+     *         totalLines: int,
+     *         coveredLines: int,
+     *         coveragePercentage: float|int,
+     *         lines: array<int, int>,
+     *         code: array<int, string>,
+     *     }>,
+     *     totalLines: int,
+     *     coveredLines: int,
+     *     coveragePercentage: float|int,
+     * }
+     */
     public function getDashboardData(): array
     {
         $coverage = $this->storage->getAllCoverage();
@@ -22,7 +37,7 @@ class CoverageReporter
 
         foreach ($coverage as $file => $lines) {
             $totalFileLines = count($lines);
-            $coveredFileLines = count(array_filter($lines, fn($count) => $count > 0));
+            $coveredFileLines = count(array_filter($lines, static fn($count) => $count > 0));
 
             $totalLines += $totalFileLines;
             $coveredLines += $coveredFileLines;
@@ -31,19 +46,21 @@ class CoverageReporter
                 'path' => $file,
                 'totalLines' => $totalFileLines,
                 'coveredLines' => $coveredFileLines,
-                'coveragePercentage' => $totalFileLines > 0 ? round(($coveredFileLines / $totalFileLines) * 100, 2) : 0,
+                'coveragePercentage' => $totalFileLines > 0
+                    ? round(($coveredFileLines / $totalFileLines) * 100, precision: 2)
+                    : 0,
                 'lines' => $lines,
                 'code' => $this->readSourceLines($file),
             ];
         }
 
-        usort($files, fn($a, $b) => $a['coveragePercentage'] <=> $b['coveragePercentage']);
+        usort($files, static fn($a, $b) => $a['coveragePercentage'] <=> $b['coveragePercentage']);
 
         return [
             'files' => $files,
             'totalLines' => $totalLines,
             'coveredLines' => $coveredLines,
-            'coveragePercentage' => $totalLines > 0 ? round(($coveredLines / $totalLines) * 100, 2) : 0,
+            'coveragePercentage' => $totalLines > 0 ? round(($coveredLines / $totalLines) * 100, precision: 2) : 0,
         ];
     }
 
@@ -63,7 +80,7 @@ class CoverageReporter
             return [];
         }
 
-        $lines = @file($path, \FILE_IGNORE_NEW_LINES);
+        $lines = file($path, \FILE_IGNORE_NEW_LINES);
         if ($lines === false) {
             return [];
         }

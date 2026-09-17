@@ -1,0 +1,26 @@
+#:schema vendor/carthage-software/mago/schema.json
+version = "1"
+php-version = "8.1"
+
+[source]
+paths    = ["src", "tests", "config"]
+includes = ["vendor"]
+excludes = ["var/**", ".phpunit.cache/**"]
+
+[linter]
+integrations = ["symfony", "phpunit"]
+
+[linter.rules]
+# test classes naturally accumulate many test methods
+too-many-methods = { exclude = ["tests/**"] }
+# tests/pcov_stub.php and its consumers deliberately use $GLOBALS to feed deterministic fake coverage
+no-global = { exclude = ["tests/**"] }
+
+[analyzer]
+ignore = [
+    # false positive: Predis\ClientInterface::del() documents its variadic parameter with an
+    # (invalid-PHP) default value, which confuses mago's override-compatibility check.
+    { code = "incompatible-parameter-count", in = "tests/Stub/FakePredisClient.php" },
+]
+
+[formatter]

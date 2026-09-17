@@ -24,9 +24,7 @@ final class FakePredisClient extends Client
 
     public ?ConnectionException $exception = null;
 
-    public function __construct($parameters = null, $options = null)
-    {
-    }
+    public function __construct($parameters = null, $options = null) {}
 
     public function hset($key, $field, $value)
     {
@@ -42,9 +40,9 @@ final class FakePredisClient extends Client
         return 1;
     }
 
-    public function sadd($key, array|string $member, ...$members)
+    public function sadd($key, array $members)
     {
-        $this->record('sadd', $key, $member);
+        $this->record('sadd', $key, ...$members);
 
         return 1;
     }
@@ -70,7 +68,10 @@ final class FakePredisClient extends Client
         return $this->hashes[$key] ?? [];
     }
 
-    public function del(array|string $keyOrKeys, ...$keys): int
+    /**
+     * @param string[]|string $keyOrKeys
+     */
+    public function del(array|string $keyOrKeys): int
     {
         $this->record('del', $keyOrKeys);
 

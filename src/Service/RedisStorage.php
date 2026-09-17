@@ -6,16 +6,20 @@ namespace Kinoba\DeadCodeBundle\Service;
 
 use Predis\Client;
 use Predis\Connection\ConnectionException;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class RedisStorage
 {
     private Client $redis;
     private int $ttl;
+    private LoggerInterface $logger;
 
-    public function __construct(string $dsn, int $ttl)
+    public function __construct(string $dsn, int $ttl, ?LoggerInterface $logger = null)
     {
         $this->redis = new Client($dsn);
         $this->ttl = $ttl;
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function saveCoverage(string $requestId, array $coverage): void
@@ -24,19 +28,21 @@ class RedisStorage
             // Save each file's coverage separately
             foreach ($coverage as $file => $lines) {
                 $key = "coverage:files:{$file}";
-                $this->redis->hset($key, $requestId, json_encode($lines));
+                $this->redis->hset($key, $requestId, json_encode($lines, \JSON_THROW_ON_ERROR));
                 $this->redis->expire($key, $this->ttl);
             }
 
             // Also store the list of requests for this file
-            $this->redis->sadd('coverage:requests', $requestId);
+            $this->redis->sadd('coverage:requests', [$requestId]);
             $this->redis->expire('coverage:requests', $this->ttl);
         } catch (ConnectionException $e) {
-            // Log the error if Redis is unavailable
-            error_log("Redis error: " . $e->getMessage());
+            $this->logger->error('Redis error: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
         }
     }
 
+    /**
+     * @return array<string, array<int, int>>
+     */
     public function getAllCoverage(): array
     {
         try {
@@ -44,15 +50,20 @@ class RedisStorage
             $coverage = [];
 
             foreach ($allFiles as $fileKey) {
-                $file = str_replace('coverage:files:', '', $fileKey);
+                $fileKey = (string) $fileKey;
+                $file = str_replace(search: 'coverage:files:', replace: '', subject: $fileKey);
                 $requestData = $this->redis->hgetall($fileKey);
                 $mergedLines = [];
 
                 foreach ($requestData as $linesJson) {
-                    $lines = json_decode($linesJson, true);
+                    $lines = json_decode((string) $linesJson, associative: true);
+                    if (!\is_array($lines)) {
+                        continue;
+                    }
+
                     foreach ($lines as $line => $count) {
                         // Negative values are pcov "not executed" sentinels, never hit counts.
-                        $mergedLines[$line] = ($mergedLines[$line] ?? 0) + max(0, (int) $count);
+                        $mergedLines[(int) $line] = ($mergedLines[(int) $line] ?? 0) + max(0, (int) $count);
                     }
                 }
 
@@ -60,7 +71,9 @@ class RedisStorage
             }
 
             return $coverage;
-        } catch (ConnectionException) {
+        } catch (ConnectionException $e) {
+            $this->logger->error('Redis error: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
+
             return [];
         }
     }
@@ -68,8 +81,12 @@ class RedisStorage
     public function clear(): void
     {
         try {
-            $this->redis->del($this->redis->keys('coverage:*'));
-        } catch (ConnectionException) {
+            $keys = $this->redis->keys('coverage:*');
+            if ($keys !== []) {
+                $this->redis->del(array_map('strval', $keys));
+            }
+        } catch (ConnectionException $e) {
+            $this->logger->error('Redis error: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
         }
     }
 }

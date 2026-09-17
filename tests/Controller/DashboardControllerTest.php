@@ -49,15 +49,18 @@ final class DashboardControllerTest extends TestCase
 
         $response = $controller->dashboard($this->createReporter());
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame('<html>report</html>', $response->getContent());
-        self::assertSame('@DeadCode/dashboard.html.twig', $twig->view);
-        self::assertSame([
-            'files' => self::DASHBOARD_DATA['files'],
-            'totalLines' => 2,
-            'coveredLines' => 1,
-            'coveragePercentage' => 50.0,
-        ], $twig->parameters);
+        static::assertSame(200, $response->getStatusCode());
+        static::assertSame('<html>report</html>', $response->getContent());
+        static::assertSame('@DeadCode/dashboard.html.twig', $twig->view);
+        static::assertSame(
+            [
+                'files' => self::DASHBOARD_DATA['files'],
+                'totalLines' => 2,
+                'coveredLines' => 1,
+                'coveragePercentage' => 50.0,
+            ],
+            $twig->parameters,
+        );
     }
 
     public function testDashboardFailsWhenTwigIsNotAvailable(): void
@@ -75,12 +78,12 @@ final class DashboardControllerTest extends TestCase
 
         $response = $controller->api($this->createReporter());
 
-        self::assertInstanceOf(JsonResponse::class, $response);
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame('application/json', $response->headers->get('Content-Type'));
-        self::assertJsonStringEqualsJsonString(
+        static::assertInstanceOf(JsonResponse::class, $response);
+        static::assertSame(200, $response->getStatusCode());
+        static::assertSame('application/json', $response->headers->get('Content-Type'));
+        static::assertJsonStringEqualsJsonString(
             json_encode(self::DASHBOARD_DATA, \JSON_THROW_ON_ERROR),
-            (string) $response->getContent()
+            (string) $response->getContent(),
         );
     }
 
@@ -100,9 +103,9 @@ final class DashboardControllerTest extends TestCase
 
         $response = $controller->clear($reporter);
 
-        self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertSame(302, $response->getStatusCode());
-        self::assertSame('/dead-code/dashboard', $response->getTargetUrl());
+        static::assertInstanceOf(RedirectResponse::class, $response);
+        static::assertSame(302, $response->getStatusCode());
+        static::assertSame('/dead-code/dashboard', $response->getTargetUrl());
     }
 
     private function createController(array $services): DashboardController
@@ -116,9 +119,9 @@ final class DashboardControllerTest extends TestCase
     private function createContainer(array $services): ContainerInterface
     {
         return new class($services) implements ContainerInterface {
-            public function __construct(private array $services)
-            {
-            }
+            public function __construct(
+                private array $services,
+            ) {}
 
             public function get(string $id): mixed
             {
@@ -127,7 +130,7 @@ final class DashboardControllerTest extends TestCase
 
             public function has(string $id): bool
             {
-                return isset($this->services[$id]);
+                return array_key_exists($id, $this->services);
             }
         };
     }
