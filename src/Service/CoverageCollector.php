@@ -47,6 +47,9 @@ class CoverageCollector
         return \extension_loaded('pcov') || \function_exists('pcov\\start');
     }
 
+    /**
+     * @return array<string, array<int, int>>|null
+     */
     public function stop(): ?array
     {
         if (!$this->started) {

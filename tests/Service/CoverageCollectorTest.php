@@ -104,6 +104,6 @@ final class CoverageCollectorTest extends TestCase
     {
         $property = new \ReflectionProperty($collector, 'started');
 
-        return (bool) $property->getValue($collector);
+        return $property->getValue($collector) === true;
     }
 }

@@ -22,6 +22,9 @@ class RedisStorage
         $this->logger = $logger ?? new NullLogger();
     }
 
+    /**
+     * @param array<string, array<int, int>> $coverage
+     */
     public function saveCoverage(string $requestId, array $coverage): void
     {
         try {
@@ -46,24 +49,27 @@ class RedisStorage
     public function getAllCoverage(): array
     {
         try {
+            /** @var list<string> $allFiles */
             $allFiles = $this->redis->keys('coverage:files:*');
             $coverage = [];
 
             foreach ($allFiles as $fileKey) {
-                $fileKey = (string) $fileKey;
                 $file = str_replace(search: 'coverage:files:', replace: '', subject: $fileKey);
+                /** @var array<string, string> $requestData */
                 $requestData = $this->redis->hgetall($fileKey);
                 $mergedLines = [];
 
                 foreach ($requestData as $linesJson) {
-                    $lines = json_decode((string) $linesJson, associative: true);
+                    /** @var array<array-key, mixed>|scalar|null $lines */
+                    $lines = json_decode($linesJson, associative: true);
                     if (!\is_array($lines)) {
                         continue;
                     }
 
-                    foreach ($lines as $line => $count) {
+                    foreach (array_keys($lines) as $line) {
+                        $count = \is_numeric($lines[$line]) ? (int) $lines[$line] : 0;
                         // Negative values are pcov "not executed" sentinels, never hit counts.
-                        $mergedLines[(int) $line] = ($mergedLines[(int) $line] ?? 0) + max(0, (int) $count);
+                        $mergedLines[(int) $line] = ($mergedLines[(int) $line] ?? 0) + max(0, $count);
                     }
                 }
 
