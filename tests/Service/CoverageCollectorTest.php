@@ -50,6 +50,10 @@ final class CoverageCollectorTest extends TestCase
 
     public function testStopReturnsEmptyArrayWhenNoFileIsWaitingForCollection(): void
     {
+        if (\extension_loaded('pcov')) {
+            static::markTestSkipped('Real pcov reports every file loaded after start() as waiting.');
+        }
+
         $collector = new CoverageCollector(true, 100, []);
         $collector->start();
 
