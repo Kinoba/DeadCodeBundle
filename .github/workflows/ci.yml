@@ -17,10 +17,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Symfony 6.4's config builder lacks the generic annotations mago analyze relies on
+          - symfony-version: "6.4.*"
+            php-version: "8.1"
+            static-analysis: false
           - symfony-version: "7.*"
             php-version: "8.2"
+            static-analysis: true
           - symfony-version: "8.*"
             php-version: "8.4"
+            static-analysis: true
 
     steps:
       - name: Checkout
@@ -69,6 +75,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Static analysis (mago analyze)
+        if: matrix.static-analysis
         run: vendor/bin/mago analyze
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
